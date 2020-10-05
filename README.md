@@ -17,6 +17,6 @@ The following assumptions were made:
 To run, simply execute the program using `java CalculateComments.java <FILE_PATH> ...`. Multiple files can be specified as command-line arguments, and the path can be relative or absolute.
 
 ## Author
-Aryan Kukreja (aryan.s.kukreja@gmail.com)
+Aryan Kukreja
 
 Test code and problem statement provided by Capital One
