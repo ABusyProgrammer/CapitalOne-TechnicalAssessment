@@ -152,29 +152,27 @@ public class CalculateComments {
             int firstSingle = lineLength, firstMulti = lineLength, curr;
             String multi = "-1", single = "-1";
 
-            // Get the first comment character for single and multi
+            // Get the first comment character for multi-line comments
             // The rest are irrelevant since they will fall within the first comment characters
             for (String chr : multiChars) {
                 curr = lines[i].indexOf(chr);
-                if (curr != -1 && curr < firstMulti) {
+                if (curr != -1 && curr < firstMulti && !this.fallsInString(lines[i], curr)) {
                     firstMulti = curr;
                     multi = chr;
                 }
             }
+
+            // Repeat the above for single-line comment characters
             for (String chr : singleChars) {
                 curr = lines[i].indexOf(chr);
-                if (curr != -1 && curr < firstSingle) {
+                if (curr != -1 && curr < firstSingle && !this.fallsInString(lines[i], curr)) {
                     firstSingle = curr;
                     single = chr;
                 }
             }
 
-            // Check if the comment characters are part of a string
-            boolean singleInStr = this.fallsInString(lines[i], firstSingle);
-            boolean multiInStr = this.fallsInString(lines[i], firstMulti);
-
             // Check if the multi-line comment start character exists, and if it does, whether it is part of a string
-            if (firstMulti != lineLength && !multiInStr && firstMulti < firstSingle) {
+            if (firstMulti != lineLength && firstMulti < firstSingle) {
                 // If the block comment does not end on the same line, cover all lines part of it
                 if (lines[i].indexOf(commentChars.get(multi)) < firstMulti) {
                     while (i < lines.length && !lines[i].contains(commentChars.get(multi))) {
@@ -199,7 +197,7 @@ public class CalculateComments {
                 }
             }
             // Else, check if the line is (or contains) a single-line comment
-            else if (firstSingle != lineLength && !singleInStr) {
+            else if (firstSingle != lineLength) {
                 // If the comment does not take up the whole line, it is a single-line comment; else, it is a block comment
                 // This is done to conform with Python's comments, which use '#' for single and multi-line comments
                 if (firstSingle > 0) {
