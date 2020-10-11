@@ -1,4 +1,4 @@
-# Capital One Technical Assessment: Automated Code Checker
+# Capital One Assessment: Automated Code Checker
 The purpose of this project is to build an automated checker whenever code is merged into a build pipeline.
 
 ## Approach
