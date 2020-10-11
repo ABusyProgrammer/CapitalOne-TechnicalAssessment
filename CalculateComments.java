@@ -1,50 +1,54 @@
 // Imports
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.regex.Pattern;
 
 /**
  * CalculateComments
  * - Driver Class for Program
  */
 public class CalculateComments {
+    public HashMap<String, HashMap<String, String>> COMMENT_CHARS;
+    public HashMap<String, String> FILE_TO_PROGRAM;
+
     /**
-     * fallsInStringGeneral()
-     * - Checks if a comment character is part of a string or not.
+     * CalculateComments() Constructor
+     * - Used to initialize the list of comment characters per language and File-Program mapping
      *
-     * @param line Line to check
-     * @return A boolean array of whether // or /* are within a string or not
+     * NOTE: To add more languages, add them in this constructor.
      */
-    public boolean[] fallsInStringGeneral(String line) {
-        // Get a list of all the positions of a double-quote (") character
-        ArrayList<Integer> quoteLocations = new ArrayList<>();
-        if ((line.charAt(0) == '\"')) {
-            quoteLocations.add(0);
-        }
-        for (int i = 1; i < line.length(); i++) {
-            if ((line.charAt(i) == '\"' && line.charAt(i - 1) != '\\')) {
-                quoteLocations.add(i);
-            }
-        }
+    public CalculateComments() {
+        this.COMMENT_CHARS = new HashMap<>() {{
+            put("python", new HashMap<>() {{
+                put("#", "0");
+            }});
+            put("java", new HashMap<>() {{
+                put("/*", "*/");
+                put("//", "0");
+            }});
+            put("javascript", new HashMap<>() {{
+                put("/*", "*/");
+                put("//", "0");
+            }});
+            put("c++", new HashMap<>() {{
+                put("/*", "*/");
+                put("//", "0");
+            }});
+        }};
 
-        // Get the indices of the first occurrence of the comment characters (for single and multi-line)
-        int multiLineComment = line.indexOf("/*"), singleLineComment = line.indexOf("//");
-        boolean[] isPartOfString = {false, false};
-
-        // In a for-loop, check if the single-line of multiline comment characters fall between
-        // any 2 pair of string apostrophes
-        for (int i = 0; i < quoteLocations.size() - 1; i += 2) {
-            if (multiLineComment > quoteLocations.get(i) && multiLineComment < quoteLocations.get(i + 1)) {
-                isPartOfString[0] = true;
-            }
-            if (singleLineComment > quoteLocations.get(i) && singleLineComment < quoteLocations.get(i + 1)) {
-                isPartOfString[1] = true;
-            }
-            if (isPartOfString[0] && isPartOfString[1]) {
-                break;
-            }
-        }
-
-        return isPartOfString;
+        // Other JVM languages, like Kotlin, are mapped to Java here as well because of the same commenting styles
+        this.FILE_TO_PROGRAM = new HashMap<>() {{
+            put("py", "python");
+            put("js", "javascript");
+            put("java", "java");
+            put("kt", "java");
+            put("scala", "java");
+            put("cpp", "c++");
+            put("c++", "c++");
+            put("hpp", "c++");
+            put("cxx", "c++");
+        }};
     }
 
     /**
@@ -56,7 +60,7 @@ public class CalculateComments {
      * @param commentCharacterIndex The occurrence of the comment-character
      * @return Whether comment-character falls within a string or not
      */
-    public boolean fallsInStringPython(String line, int commentCharacterIndex) {
+    public boolean fallsInString(String line, int commentCharacterIndex) {
         // Placeholder value
         char s = 'a';
 
@@ -77,7 +81,7 @@ public class CalculateComments {
             // If it is a valid string character (not an escaped one), then find its matching pair
             if ((line.charAt(j) == '\"' && line.charAt(j - 1) != '\\') || (line.charAt(j) == '\'' && line.charAt(j - 1) != '\\')) {
                 s = line.charAt(j++);
-                while (line.charAt(j) != s && j < commentCharacterIndex) {
+                while (j < commentCharacterIndex && line.charAt(j) != s) {
                     j++;
                 }
                 // Reset the tracker once the closing pair of the quotes have been found.
@@ -113,113 +117,118 @@ public class CalculateComments {
     }
 
     /**
-     * parsePython()
-     * - Parses through Python code for comments
+     * parse()
+     * - Counts the number and type of comments in the program, based on the given language
      *
-     * @param program Main program code
+     * @param program The code to parse
+     * @param language The language of the code
      */
-    public void parsePython(String program) {
-        int totComLines = 0, totSingleLineComs = 0, totNumComLinesInBlock = 0, totNumBlockComs = 0, totNumTodos = 0;
-        int i = 0, end, numConsecutiveComments = 0;
+    public void parse(String program, String language) {
+        ArrayList<String> singleChars = new ArrayList<>();
+        ArrayList<String> multiChars = new ArrayList<>();
 
-        // Loop through every line of the program
-        String[] lines = program.split("\\r?\\n");
-        while (i < lines.length) {
-            // Check if there is a comment character, and it is not a part of a string
-            end = lines[i].indexOf('#');
-            if (end != -1 && lines[i].length() > 0 && !fallsInStringPython(lines[i], end)) {
-                // Check if there is any TODOs, and track the number of consecutive comments and total comments
-                if (lines[i].toUpperCase().contains("TODO")) {
-                    totNumTodos++;
-                }
-                numConsecutiveComments++;
-                totComLines++;
+        // Get the comment characters for the given language
+        HashMap<String, String> commentChars = this.COMMENT_CHARS.get(language);
+        for (String key : commentChars.keySet()) {
+            if (commentChars.get(key).equals("0")) {
+                singleChars.add(key);
+            } else {
+                multiChars.add(key);
             }
-            // If not, then check if any comments have formed from previous loop iterations
-            else {
-                // If a block comment has formed, then number of consecutive comments is more than 1
-                if (numConsecutiveComments > 1) {
-                    totNumBlockComs++;
-                    totNumComLinesInBlock += numConsecutiveComments;
-                }
-                // Else, a single-line comment has formed, or no comments were encountered
-                else {
-                    totSingleLineComs += numConsecutiveComments;
-                }
-                // Reset the consecutive-comment counter
-                numConsecutiveComments = 0;
-            }
-            i++;
         }
 
-        // Print the results
-        this.printOutput(lines.length, totComLines, totSingleLineComs, totNumComLinesInBlock, totNumBlockComs, totNumTodos);
-    }
-
-    /**
-     * parseGeneral()
-     * - Parse JavaScript, Java, Kotlin, Scala, Groovy, and C++ programs for comments
-     *
-     * @param program The program to parse
-     */
-    public void parseGeneral(String program) {
         int totComLines = 0, totSingleLineComs = 0, totNumComLinesInBlock = 0, totNumBlockComs = 0, totNumTodos = 0;
-        int multiLineComment, singleLineComment, i;
         String[] lines = program.split("\\r?\\n");
 
         // Loop through the program
-        i = 0;
+        int i = 0;
         while (i < lines.length) {
             // Skip blank lines
+            lines[i] = lines[i].trim();
             if (lines[i].length() == 0) { i++; continue; }
+            int lineLength = lines[i].length();
+
             // Get the starting positions of the comment characters
-            multiLineComment = lines[i].indexOf("/*");
-            singleLineComment = lines[i].indexOf("//");
+            int firstSingle = lineLength, firstMulti = lineLength, curr;
+            String multi = "-1", single = "-1";
+
+            // Get the first comment character for single and multi
+            // The rest are irrelevant since they will fall within the first comment characters
+            for (String chr : multiChars) {
+                curr = lines[i].indexOf(chr);
+                if (curr != -1 && curr < firstMulti) {
+                    firstMulti = curr;
+                    multi = chr;
+                }
+            }
+            for (String chr : singleChars) {
+                curr = lines[i].indexOf(chr);
+                if (curr != -1 && curr < firstSingle) {
+                    firstSingle = curr;
+                    single = chr;
+                }
+            }
 
             // Check if the comment characters are part of a string
-            boolean[] isPartOfString = this.fallsInStringGeneral(lines[i]);
+            boolean singleInStr = this.fallsInString(lines[i], firstSingle);
+            boolean multiInStr = this.fallsInString(lines[i], firstMulti);
 
             // Check if the multi-line comment start character exists, and if it does, whether it is part of a string
-            if (multiLineComment != -1 && !isPartOfString[0]) {
-                // If a valid single-comment character precedes it, then parse it as a single-string
-                if (singleLineComment != -1 && singleLineComment < multiLineComment && !isPartOfString[1]) {
-                    // Check if there TODOs are there in any of the lines
-                    if (lines[i].toUpperCase().contains("TODO")) {
-                        totNumTodos++;
-                    }
-                    totSingleLineComs++;
-                }
-                // Else, it is a multi-line comment. Find the ending line for it, and increment the trackers
-                else {
-                    totNumBlockComs++;
-                    if (lines[i].indexOf("*/") < multiLineComment) {
-                        while (!lines[i].contains("*/")) {
-                            totComLines++;
-                            totNumComLinesInBlock++;
+            if (firstMulti != lineLength && !multiInStr && firstMulti < firstSingle) {
+                // If the block comment does not end on the same line, cover all lines part of it
+                if (lines[i].indexOf(commentChars.get(multi)) < firstMulti) {
+                    while (i < lines.length && !lines[i].contains(commentChars.get(multi))) {
+                        totComLines++;
+                        totNumComLinesInBlock++;
 
-                            // Check if there TODOs are there in any of the lines
-                            if (lines[i].toUpperCase().contains("TODO")) {
-                                totNumTodos++;
-                            }
-                            i++;
+                        // Check if there TODOs are there in any of the lines
+                        if (Pattern.compile("TODO[^a-zA-Z0-9]").matcher(lines[i].toUpperCase()).find()) {
+                            totNumTodos++;
                         }
+                        i++;
                     }
-                    totNumComLinesInBlock++;
                 }
+
+                totNumBlockComs++;
                 totComLines++;
+                totNumComLinesInBlock++;
 
                 // Check if there TODOs are there in any of the lines
-                if (lines[i].toUpperCase().contains("TODO")) {
+                if (Pattern.compile("TODO[^a-zA-Z0-9]").matcher(lines[i].toUpperCase()).find()) {
                     totNumTodos++;
                 }
             }
-            // Else, check if the line is (or contains) a single-line coment
-            else if (singleLineComment != -1 && !isPartOfString[1]) {
-                totComLines++;
-                totSingleLineComs++;
+            // Else, check if the line is (or contains) a single-line comment
+            else if (firstSingle != lineLength && !singleInStr) {
+                // If the comment does not take up the whole line, it is a single-line comment; else, it is a block comment
+                // This is done to conform with Python's comments, which use '#' for single and multi-line comments
+                if (firstSingle > 0) {
+                    totComLines++;
+                    totSingleLineComs++;
+                    if (Pattern.compile("TODO[^a-zA-Z0-9]").matcher(lines[i].toUpperCase()).find()) {
+                        totNumTodos++;
+                    }
+                }
+                // Check for multi-line comments in this else-block
+                else {
+                    int numComments = 0;
+                    do {
+                        totComLines++;
+                        numComments++;
+                        if (Pattern.compile("TODO[^a-zA-Z0-9]").matcher(lines[i].toUpperCase()).find()) {
+                            totNumTodos++;
+                        }
+                        i++;
+                    } while (i < lines.length && lines[i].trim().indexOf(single) == 0);
 
-                if (lines[i].toUpperCase().contains("TODO")) {
-                    totNumTodos++;
+                    // A single full-line comment is still a single-line comment. This block checks for that
+                    if (numComments > 1) {
+                        totNumComLinesInBlock += numComments;
+                        totNumBlockComs++;
+                    } else {
+                        totSingleLineComs += numComments;
+                    }
+                    i--;
                 }
             }
             i++;
@@ -247,9 +256,6 @@ public class CalculateComments {
         StringBuilder builder;
         String temp, file;
 
-        // List of supported formats
-        String generalFormats = "java kt scala js cpp cxx C c++ hpp py groovy gvy gy gsh";
-
         // for every file passed in
         for (String arg : args) {
             // If the file is not a program (based on extension)
@@ -261,38 +267,33 @@ public class CalculateComments {
             // Get the file extension
             file = arg.substring(arg.lastIndexOf('.') + 1);
 
-            // Check if the program's language is supported
-            if (generalFormats.contains(file)) {
-                // Attempt to read the program
-                try {
-                    reader = new BufferedReader(new FileReader(arg));
-                    builder = new StringBuilder();
-                    while ((temp = reader.readLine()) != null) {
-                        if (temp.length() == 0) {
-                            builder.append("\n");
-                        } else {
-                            builder.append(temp).append("\n");
-                        }
-                    }
-                    reader.close();
-
-                    // Send the program to the appropriate parser
-                    if (file.equals("py")) {
-                        System.out.println(arg);
-                        commentsObj.parsePython(builder.toString());
-                        System.out.println("\n--------------------");
-                    } else {
-                        System.out.println(arg);
-                        commentsObj.parseGeneral(builder.toString());
-                        System.out.println("\n--------------------");
-                    }
-                } catch (FileNotFoundException e) {
-                    System.err.println("\nThe file \"" + arg + "\" was not found.\n");
-                }
-            }
-            // Else, output an error message that the program is not supported (yet)
-            else {
+            // Get the program language based on the file extension
+            String program = commentsObj.FILE_TO_PROGRAM.get(file.toLowerCase());
+            if (program == null) {
+                System.out.println(arg);
                 System.out.println("This program type is not supported yet.");
+                continue;
+            }
+
+            // Attempt to read the program
+            try {
+                reader = new BufferedReader(new FileReader(arg));
+                builder = new StringBuilder();
+                while ((temp = reader.readLine()) != null) {
+                    if (temp.length() == 0) {
+                        builder.append("\n");
+                    } else {
+                        builder.append(temp).append("\n");
+                    }
+                }
+                reader.close();
+
+                // Send the program to the parser with the correct language
+                System.out.println(arg);
+                commentsObj.parse(builder.toString(), program);
+                System.out.println("\n--------------------");
+            } catch (FileNotFoundException e) {
+                System.err.println("\nThe file \"" + arg + "\" was not found.\n");
             }
         }
     }
